@@ -44,6 +44,7 @@ pnpm-debug.log*
 .vscode
 .idea
 *.sublime-workspace
+notas.txt
 
 # =========================
 # Testing
@@ -78,3 +79,6 @@ pids
 # =========================
 prisma/*.db
 prisma/*.db-journal
+
+prisma/migrations/dev.db
+prisma/migrations/*.db
