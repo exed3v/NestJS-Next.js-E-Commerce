@@ -1,8 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import * as bcrypt from 'bcrypt';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { JwtUser } from '../../common/types/jwt-payload';
 
 @Injectable()
 export class UsersService {
@@ -22,8 +27,8 @@ export class UsersService {
     });
   }
 
-  async getUser(id: string) {
-    const userFound = await this.prisma.user.findUnique({
+  async getUser(id: string, currentUser: JwtUser) {
+    const user = await this.prisma.user.findUnique({
       where: { id },
       select: {
         id: true,
@@ -36,23 +41,22 @@ export class UsersService {
       },
     });
 
-    if (!userFound) {
+    if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
-    return userFound;
+    // 🔥 autorización
+    if (currentUser.role !== 'ADMIN' && currentUser.id !== id) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    return user;
   }
 
   async findByEmail(email: string) {
-    const userFound = await this.prisma.user.findUnique({
+    return this.prisma.user.findUnique({
       where: { email },
     });
-
-    if (!userFound) {
-      throw new NotFoundException(`User with email ${email} not found`);
-    }
-
-    return userFound;
   }
 
   async createUser(data: CreateUserDto) {
@@ -68,35 +72,55 @@ export class UsersService {
     return newUser;
   }
 
-  async updateUser(id: string, data: UpdateUserDto) {
-    const user = await this.prisma.user.findUnique({
+  async updateUser(id: string, data: UpdateUserDto, currentUser: JwtUser) {
+    const userFound = await this.prisma.user.findUnique({
       where: { id },
     });
 
-    if (!user) {
+    if (!userFound) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
-    // 🔐 Si viene password → hashear
+    console.log('id URL', id);
+    console.log('id currentUser', currentUser.id);
+
+    // 🔥 autorización
+    if (currentUser.role !== 'ADMIN' && currentUser.id !== id) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    // 🔐 hash si viene password
     if (data.password) {
       data.password = await bcrypt.hash(data.password, 10);
     }
 
-    const updatedUser = await this.prisma.user.update({
+    return this.prisma.user.update({
       where: { id },
       data,
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
-
-    return updatedUser;
   }
 
-  async deleteUser(id: string) {
+  async deleteUser(id: string, currentUser: JwtUser) {
     const user = await this.prisma.user.findUnique({
       where: { id },
     });
 
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
+    }
+
+    // 🔥 autorización
+    if (currentUser.role !== 'ADMIN' && currentUser.id !== id) {
+      throw new ForbiddenException('Access denied');
     }
 
     await this.prisma.user.delete({
