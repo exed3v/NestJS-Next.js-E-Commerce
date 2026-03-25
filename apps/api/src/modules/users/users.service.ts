@@ -43,6 +43,18 @@ export class UsersService {
     return userFound;
   }
 
+  async findByEmail(email: string) {
+    const userFound = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!userFound) {
+      throw new NotFoundException(`User with email ${email} not found`);
+    }
+
+    return userFound;
+  }
+
   async createUser(data: CreateUserDto) {
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
@@ -52,8 +64,8 @@ export class UsersService {
         password: hashedPassword,
       },
     });
-    const { password, ...result } = newUser;
-    return result;
+
+    return newUser;
   }
 
   async updateUser(id: string, data: UpdateUserDto) {
@@ -75,8 +87,7 @@ export class UsersService {
       data,
     });
 
-    const { password, ...result } = updatedUser;
-    return result;
+    return updatedUser;
   }
 
   async deleteUser(id: string) {
