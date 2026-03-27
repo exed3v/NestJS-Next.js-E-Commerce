@@ -16,7 +16,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
-import { JwtUser } from '../../common/types/jwt-payload';
+import { JwtUser } from '../../common/interfaces/jwt-payload';
 
 @Controller('users')
 export class UsersController {

@@ -39,7 +39,7 @@ export class AuthService {
       access_token: token,
       user: {
         id: user.id,
-        firstName: user.firstName,
+        fullName: user.fullName,
         email: user.email,
         role: user.role,
       },
@@ -66,7 +66,7 @@ export class AuthService {
       access_token: token,
       user: {
         id: user.id,
-        firstName: user.firstName,
+        fullName: user.fullName,
         email: user.email,
         role: user.role,
       },
