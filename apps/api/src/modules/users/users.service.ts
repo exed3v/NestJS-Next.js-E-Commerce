@@ -7,7 +7,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import * as bcrypt from 'bcrypt';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { JwtUser } from '../../common/types/jwt-payload';
+import { JwtUser } from '../../common/interfaces/jwt-payload';
 
 @Injectable()
 export class UsersService {
@@ -18,8 +18,7 @@ export class UsersService {
       select: {
         id: true,
         email: true,
-        firstName: true,
-        lastName: true,
+        fullName: true,
         role: true,
         createdAt: true,
         updatedAt: true,
@@ -33,8 +32,7 @@ export class UsersService {
       select: {
         id: true,
         email: true,
-        firstName: true,
-        lastName: true,
+        fullName: true,
         role: true,
         createdAt: true,
         updatedAt: true,
@@ -100,8 +98,7 @@ export class UsersService {
       select: {
         id: true,
         email: true,
-        firstName: true,
-        lastName: true,
+        fullName: true,
         role: true,
         createdAt: true,
         updatedAt: true,

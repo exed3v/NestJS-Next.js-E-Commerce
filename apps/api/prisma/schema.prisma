@@ -13,26 +13,289 @@ datasource db {
   provider = "postgresql"
 }
 
-model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  firstName String
-  lastName  String
-  role      Role     @default(USER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
+// ============================================
+// ENUMS
+// ============================================
 
 enum Role {
-  USER
   ADMIN
+  USER
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CARD
+  PAYPAL
+  BANK_TRANSFER
+  CASH_ON_DELIVERY
+}
+
+// ============================================
+// MODELS
+// ============================================
+
+model User {
+  id       String  @id @default(cuid())
+  email    String  @unique
+  password String
+  fullName String?
+  role     Role    @default(USER)
+
+  // Relaciones
+  cart      Cart?
+  orders    Order[]
+  addresses Address[]
+  reviews   Review[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
 }
 
 model Product {
-  id          String   @id @default(uuid())
-  title       String
+  id             String  @id @default(cuid())
+  name           String
+  slug           String  @unique
+  description    String?
+  price          Float
+  compareAtPrice Float?
+  costPerItem    Float?
+  stock          Int     @default(0)
+  sku            String? @unique
+  barcode        String?
+
+  isActive   Boolean @default(true)
+  isFeatured Boolean @default(false)
+  weight     Float?
+
+  // Relaciones
+  categoryId String?
+  category   Category?        @relation(fields: [categoryId], references: [id])
+  images     ProductImage[]
+  variants   ProductVariant[]
+  reviews    Review[]
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([isActive])
+  @@index([slug])
+  @@map("products")
+}
+
+model ProductImage {
+  id     String  @id @default(cuid())
+  url    String
+  alt    String?
+  isMain Boolean @default(false)
+  order  Int     @default(0)
+
+  // Relaciones
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_images")
+}
+
+model ProductVariant {
+  id    String  @id @default(cuid())
+  type  String
+  value String
+  price Float?
+  stock Int     @default(0)
+  sku   String? @unique
+
+  // Relaciones
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, type, value])
+  @@map("product_variants")
+}
+
+model Category {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  slug        String  @unique
   description String?
-  price       Float
-  createdAt   DateTime @default(now())
+  image       String?
+  order       Int     @default(0)
+
+  // Auto-relación para categorías anidadas
+  parentId String?
+  parent   Category?  @relation("CategoryToCategory", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryToCategory")
+
+  // Relaciones
+  products Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("categories")
+}
+
+model Cart {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  expiresAt DateTime
+
+  // Relaciones
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items CartItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("carts")
+}
+
+model CartItem {
+  id        String  @id @default(cuid())
+  cartId    String
+  productId String
+  variantId String?
+  quantity  Int     @default(1)
+
+  // Relaciones
+  cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([cartId, productId, variantId])
+  @@map("cart_items")
+}
+
+model Address {
+  id           String  @id @default(cuid())
+  userId       String
+  firstName    String
+  lastName     String
+  company      String?
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  state        String
+  postalCode   String
+  country      String
+  phone        String
+  isDefault    Boolean @default(false)
+
+  // Relaciones
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shippingOrders Order[] @relation("ShippingAddress")
+  billingOrders  Order[] @relation("BillingAddress")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("addresses")
+}
+
+model Order {
+  id           String      @id @default(cuid())
+  orderNumber  String      @unique
+  userId       String
+  status       OrderStatus @default(PENDING)
+  total        Float
+  subtotal     Float
+  tax          Float       @default(0)
+  shippingCost Float       @default(0)
+  discount     Float       @default(0)
+
+  // Direcciones
+  shippingAddressId String?
+  billingAddressId  String?
+
+  // Métodos de pago
+  paymentMethod PaymentMethod
+  paymentStatus PaymentStatus @default(PENDING)
+  paymentId     String?
+
+  // Envío
+  trackingNumber String?
+  shippedAt      DateTime?
+  deliveredAt    DateTime?
+
+  // Notas
+  notes      String?
+  adminNotes String?
+
+  // Relaciones
+  user            User        @relation(fields: [userId], references: [id])
+  shippingAddress Address?    @relation("ShippingAddress", fields: [shippingAddressId], references: [id])
+  billingAddress  Address?    @relation("BillingAddress", fields: [billingAddressId], references: [id])
+  items           OrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([orderNumber])
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  productId String
+  variantId String?
+
+  // Snapshot de datos
+  productName String
+  productSku  String?
+  variantInfo Json?
+  unitPrice   Float
+  quantity    Int
+  total       Float
+
+  // Relaciones
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  userId     String
+  productId  String
+  rating     Int
+  title      String?
+  comment    String?
+  isVerified Boolean  @default(false)
+  images     String[]
+
+  // Relaciones
+  user    User    @relation(fields: [userId], references: [id])
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, productId])
+  @@index([productId, rating])
+  @@map("reviews")
 }
