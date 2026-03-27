@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CreateUserDto {
   @ApiProperty({
@@ -27,4 +27,14 @@ export class CreateUserDto {
   @IsString()
   @MinLength(6)
   password: string;
+
+  @ApiPropertyOptional({
+    description: 'User role (only ADMIN can assign roles)',
+    enum: ['ADMIN', 'USER'],
+    default: 'USER',
+    example: 'USER',
+  })
+  @IsOptional()
+  @IsString()
+  role?: string;
 }
