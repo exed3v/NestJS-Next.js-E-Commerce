@@ -8,6 +8,8 @@ import {
   Delete,
   UseGuards,
   Req,
+  HttpStatus,
+  HttpCode,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -106,16 +108,18 @@ export class ProductsController {
     @Body() updateProductDto: UpdateProductDto,
     @Req() req: { user: JwtUser },
   ) {
-    return this.productsService.update(id, updateProductDto, req.user as any);
+    return this.productsService.update(id, updateProductDto, req.user);
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
+  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete product (Admin only)' })
   @ApiParam({ name: 'id', description: 'Product ID' })
-  remove(@Param('id') id: string, @Req() req: { user: JwtUser }) {
-    return this.productsService.remove(id, req.user as any);
+  @ApiResponse({ status: 204, description: 'Product deleted successfully' })
+  async remove(@Param('id') id: string, @Req() req: { user: JwtUser }) {
+    await this.productsService.remove(id, req.user);
   }
 }
