@@ -64,6 +64,27 @@ export class ProductsService {
     };
   }
 
+  private async deleteImagesFromCloudinary(images: { url: string }[]) {
+    if (images.length === 0) return;
+
+    await Promise.all(
+      images.map(async (image) => {
+        const publicId = this.extractPublicIdFromUrl(image.url);
+        try {
+          await this.cloudinaryClient.uploader.destroy(publicId);
+        } catch (error) {
+          console.error(`Failed to delete image ${publicId}:`, error);
+        }
+      }),
+    );
+  }
+
+  private extractPublicIdFromUrl(url: string): string {
+    const urlParts = url.split('/');
+    const publicIdWithExtension = urlParts.slice(-2).join('/');
+    return publicIdWithExtension.split('.')[0];
+  }
+
   // async create(
   //   createProductDto: CreateProductDto,
   //   currentUser: JwtUser,
@@ -245,10 +266,23 @@ export class ProductsService {
       throw new ForbiddenException('Only admins can delete products');
     }
 
-    await this.findOne(id);
+    const product = await this.prisma.product.findUnique({
+      where: { id },
+      include: { images: true },
+    });
 
-    return this.prisma.product.delete({
+    if (!product) {
+      throw new NotFoundException(`Product with ID ${id} not found`);
+    }
+
+    // Eliminar imágenes de Cloudinary
+    await this.deleteImagesFromCloudinary(product.images);
+
+    // Eliminar producto de la BD
+    await this.prisma.product.delete({
       where: { id },
     });
+
+    return { message: 'Product deleted successfully' };
   }
 }
