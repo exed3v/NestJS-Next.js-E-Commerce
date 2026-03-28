@@ -27,6 +27,102 @@ export class ProductsService {
       .replace(/^-|-$/g, '');
   }
 
+  private async uploadImages(files: Express.Multer.File[]) {
+    return Promise.all(
+      files.map(async (file, index) => {
+        const base64 = file.buffer.toString('base64');
+        const dataUri = `data:${file.mimetype};base64,${base64}`;
+        const result = await this.cloudinaryClient.uploader.upload(dataUri, {
+          folder: 'products',
+        });
+        return {
+          url: result.secure_url,
+          isMain: index === 0,
+          order: index,
+        };
+      }),
+    );
+  }
+
+  private transformProductData(dto: CreateProductDto) {
+    return {
+      name: dto.name,
+      description: dto.description,
+      price: Number(dto.price),
+      compareAtPrice: dto.compareAtPrice
+        ? Number(dto.compareAtPrice)
+        : undefined,
+      costPerItem: dto.costPerItem ? Number(dto.costPerItem) : undefined,
+      stock: dto.stock ? Number(dto.stock) : 0,
+      sku: dto.sku,
+      barcode: dto.barcode,
+      isActive: dto.isActive === undefined ? true : Boolean(dto.isActive),
+      isFeatured:
+        dto.isFeatured === undefined ? false : Boolean(dto.isFeatured),
+      weight: dto.weight ? Number(dto.weight) : undefined,
+      categoryId: dto.categoryId || null,
+    };
+  }
+
+  // async create(
+  //   createProductDto: CreateProductDto,
+  //   currentUser: JwtUser,
+  //   files: Express.Multer.File[],
+  // ) {
+  //   if (currentUser.role !== 'ADMIN') {
+  //     throw new ForbiddenException('Only admins can create products');
+  //   }
+
+  //   const slug = this.generateSlug(createProductDto.name);
+
+  //   // Subir imágenes a Cloudinary
+  //   const uploadedImages = await Promise.all(
+  //     files.map(async (file, index) => {
+  //       // Convertir buffer a base64 para subir
+  //       const base64 = file.buffer.toString('base64');
+  //       const dataUri = `data:${file.mimetype};base64,${base64}`;
+
+  //       const result = await this.cloudinaryClient.uploader.upload(dataUri, {
+  //         folder: 'products',
+  //       });
+
+  //       return {
+  //         url: result.secure_url,
+  //         isMain: index === 0,
+  //         order: index,
+  //       };
+  //     }),
+  //   );
+
+  //   // Crear producto con sus imágenes
+  //   return this.prisma.product.create({
+  //     data: {
+  //       name: createProductDto.name,
+  //       slug,
+  //       description: createProductDto.description,
+  //       price: createProductDto.price,
+  //       compareAtPrice: createProductDto.compareAtPrice,
+  //       costPerItem: createProductDto.costPerItem,
+  //       stock: createProductDto.stock ?? 0,
+  //       sku: createProductDto.sku,
+  //       barcode: createProductDto.barcode,
+  //       isActive: createProductDto.isActive ?? true,
+  //       isFeatured: createProductDto.isFeatured ?? false,
+  //       weight: createProductDto.weight,
+  //       categoryId: createProductDto.categoryId,
+  //       images: {
+  //         create: uploadedImages,
+  //       },
+  //     },
+  //     include: {
+  //       category: true,
+  //       images: {
+  //         orderBy: { order: 'asc' },
+  //       },
+  //     },
+  //   });
+  // }
+
   async create(
     createProductDto: CreateProductDto,
     currentUser: JwtUser,
@@ -38,44 +134,21 @@ export class ProductsService {
 
     const slug = this.generateSlug(createProductDto.name);
 
-    // Subir imágenes a Cloudinary
-    const uploadedImages = await Promise.all(
-      files.map(async (file, index) => {
-        // Convertir buffer a base64 para subir
-        const base64 = file.buffer.toString('base64');
-        const dataUri = `data:${file.mimetype};base64,${base64}`;
+    // 1. Validar y transformar datos (lanza error si algo está mal)
+    const productData = this.transformProductData(createProductDto);
 
-        const result = await this.cloudinaryClient.uploader.upload(dataUri, {
-          folder: 'products',
-        });
+    // 2. Subir imágenes a Cloudinary (si hay archivos)
+    let uploadedImages: any[] = [];
+    if (files && files.length > 0) {
+      uploadedImages = await this.uploadImages(files); // Si falla, se detiene aquí
+    }
 
-        return {
-          url: result.secure_url,
-          isMain: index === 0,
-          order: index,
-        };
-      }),
-    );
-
-    // Crear producto con sus imágenes
     return this.prisma.product.create({
       data: {
-        name: createProductDto.name,
         slug,
-        description: createProductDto.description,
-        price: createProductDto.price,
-        compareAtPrice: createProductDto.compareAtPrice,
-        costPerItem: createProductDto.costPerItem,
-        stock: createProductDto.stock ?? 0,
-        sku: createProductDto.sku,
-        barcode: createProductDto.barcode,
-        isActive: createProductDto.isActive ?? true,
-        isFeatured: createProductDto.isFeatured ?? false,
-        weight: createProductDto.weight,
-        categoryId: createProductDto.categoryId,
-        images: {
-          create: uploadedImages,
-        },
+        ...productData,
+        images:
+          uploadedImages.length > 0 ? { create: uploadedImages } : undefined,
       },
       include: {
         category: true,
@@ -146,7 +219,11 @@ export class ProductsService {
 
     await this.findOne(id);
 
-    const updateData: any = { ...updateProductDto };
+    const updateData = Object.fromEntries(
+      Object.entries(updateProductDto).filter(
+        ([, value]) => value !== undefined,
+      ),
+    );
 
     // Si se actualiza el nombre, regenerar slug
     if (updateProductDto.name) {

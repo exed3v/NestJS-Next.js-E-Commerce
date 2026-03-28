@@ -69,11 +69,7 @@ export class ProductsController {
     @Req() req: { user: JwtUser },
     @UploadedFiles() files: Express.Multer.File[],
   ) {
-    return this.productsService.create(
-      createProductDto,
-      req.user as any,
-      files,
-    );
+    return this.productsService.create(createProductDto, req.user, files);
   }
 
   @Get()

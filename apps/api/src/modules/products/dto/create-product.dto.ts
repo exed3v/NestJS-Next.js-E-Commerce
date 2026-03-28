@@ -10,6 +10,7 @@ import {
   IsArray,
   IsUrl,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateProductDto {
   @ApiProperty({ description: 'Product name', example: 'Nike Air Max 90' })
@@ -28,6 +29,7 @@ export class CreateProductDto {
   @ApiProperty({ description: 'Product price', example: 120.0 })
   @IsNumber()
   @Min(0)
+  @Type(() => Number) // 👈 Transforma string a número
   price: number;
 
   @ApiPropertyOptional({
@@ -37,6 +39,7 @@ export class CreateProductDto {
   @IsNumber()
   @IsOptional()
   @Min(0)
+  @Type(() => Number)
   compareAtPrice?: number;
 
   @ApiPropertyOptional({
@@ -46,6 +49,7 @@ export class CreateProductDto {
   @IsNumber()
   @IsOptional()
   @Min(0)
+  @Type(() => Number)
   costPerItem?: number;
 
   @ApiPropertyOptional({
@@ -56,6 +60,7 @@ export class CreateProductDto {
   @IsNumber()
   @IsOptional()
   @Min(0)
+  @Type(() => Number)
   stock?: number;
 
   @ApiPropertyOptional({ description: 'SKU code', example: 'NK-AM90-001' })
@@ -71,16 +76,19 @@ export class CreateProductDto {
   @ApiPropertyOptional({ description: 'Product active status', default: true })
   @IsBoolean()
   @IsOptional()
+  @Type(() => Boolean)
   isActive?: boolean;
 
   @ApiPropertyOptional({ description: 'Featured product', default: false })
   @IsBoolean()
   @IsOptional()
+  @Type(() => Boolean)
   isFeatured?: boolean;
 
   @ApiPropertyOptional({ description: 'Weight in kg', example: 0.5 })
   @IsNumber()
   @IsOptional()
+  @Type(() => Number)
   weight?: number;
 
   @ApiPropertyOptional({ description: 'Category ID', example: 'cm8x1a2b3c...' })
