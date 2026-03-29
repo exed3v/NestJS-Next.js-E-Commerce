@@ -38,26 +38,6 @@ export class CategoriesService {
     });
   }
 
-  //   async findAll() {
-  //     return this.prisma.category.findMany({
-  //       orderBy: { order: 'asc' },
-  //       include: {
-  //         parent: true,
-  //         children: true,
-  //         products: {
-  //           take: 5, // Solo para preview, no traer todos
-  //           select: {
-  //             id: true,
-  //             name: true,
-  //             slug: true,
-  //             price: true,
-  //             images: true,
-  //           },
-  //         },
-  //       },
-  //     });
-  //   }
-
   async findAll() {
     return this.prisma.category.findMany({
       where: { parentId: null },
@@ -65,21 +45,6 @@ export class CategoriesService {
       include: {
         children: {
           orderBy: { name: 'asc' },
-          include: {
-            children: {
-              orderBy: { name: 'asc' },
-            },
-          },
-        },
-        products: {
-          take: 5,
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            price: true,
-            images: true,
-          },
         },
       },
     });

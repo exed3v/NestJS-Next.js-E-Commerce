@@ -10,6 +10,7 @@ import {
   Req,
   HttpStatus,
   HttpCode,
+  Query,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -74,11 +75,28 @@ export class ProductsController {
     return this.productsService.create(createProductDto, req.user, files);
   }
 
+  // @Get()
+  // @ApiOperation({ summary: 'Get all active products' })
+  // @ApiResponse({ status: 200, description: 'Products retrieved successfully' })
+  // findAll() {
+  //   return this.productsService.findAll();
+  // }
+
   @Get()
-  @ApiOperation({ summary: 'Get all active products' })
+  @ApiOperation({ summary: 'Get all products with filters' })
   @ApiResponse({ status: 200, description: 'Products retrieved successfully' })
-  findAll() {
-    return this.productsService.findAll();
+  findAll(
+    @Query('categoryId') categoryId?: string,
+    @Query('search') search?: string,
+    @Query('minPrice') minPrice?: number,
+    @Query('maxPrice') maxPrice?: number,
+  ) {
+    return this.productsService.findAll({
+      categoryId,
+      search,
+      minPrice,
+      maxPrice,
+    });
   }
 
   @Get(':id')

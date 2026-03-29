@@ -11,6 +11,13 @@ import { JwtUser } from 'src/common/interfaces/jwt-payload';
 import { Inject } from '@nestjs/common';
 import { v2 as cloudinary } from 'cloudinary';
 
+interface FindAllFilters {
+  categoryId?: string;
+  search?: string;
+  minPrice?: number;
+  maxPrice?: number;
+}
+
 @Injectable()
 export class ProductsService {
   constructor(
@@ -180,13 +187,61 @@ export class ProductsService {
     });
   }
 
-  async findAll() {
+  // async findAll() {
+  //   return this.prisma.product.findMany({
+  //     where: { isActive: true },
+  //     include: {
+  //       category: true,
+  //       images: {
+  //         orderBy: { order: 'asc' },
+  //       },
+  //     },
+  //     orderBy: { createdAt: 'desc' },
+  //   });
+  // }
+
+  async findAll(filters: FindAllFilters = {}) {
+    const { categoryId, search, minPrice, maxPrice } = filters;
+
+    const where: any = {
+      isActive: true,
+    };
+
+    // Filtro por categoría (incluye subcategorías)
+    if (categoryId) {
+      // Obtener todas las subcategorías
+      const category = await this.prisma.category.findUnique({
+        where: { id: categoryId },
+        include: { children: true },
+      });
+
+      const categoryIds = [categoryId];
+      if (category?.children) {
+        categoryIds.push(...category.children.map((c) => c.id));
+      }
+
+      where.categoryId = { in: categoryIds };
+    }
+
+    // Búsqueda por nombre
+    if (search) {
+      where.name = { contains: search, mode: 'insensitive' };
+    }
+
+    // Filtro por precio
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      where.price = {};
+      if (minPrice !== undefined) where.price.gte = minPrice;
+      if (maxPrice !== undefined) where.price.lte = maxPrice;
+    }
+
     return this.prisma.product.findMany({
-      where: { isActive: true },
+      where,
       include: {
         category: true,
         images: {
-          orderBy: { order: 'asc' },
+          where: { isMain: true },
+          take: 1,
         },
       },
       orderBy: { createdAt: 'desc' },
