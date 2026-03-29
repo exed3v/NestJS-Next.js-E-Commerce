@@ -139,11 +139,10 @@ model Category {
   slug        String  @unique
   description String?
   image       String?
-  order       Int     @default(0)
 
   // Auto-relación para categorías anidadas
   parentId String?
-  parent   Category?  @relation("CategoryToCategory", fields: [parentId], references: [id])
+  parent   Category?  @relation("CategoryToCategory", fields: [parentId], references: [id], onDelete: Cascade)
   children Category[] @relation("CategoryToCategory")
 
   // Relaciones
