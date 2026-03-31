@@ -31,6 +31,8 @@ import { JwtUser } from '../../common/interfaces/jwt-payload';
 
 import { UploadImagesInterceptor } from '../../common/interceptors/upload.interceptor';
 import { UseInterceptors, UploadedFiles } from '@nestjs/common';
+import { CreateVariantDto } from './dto/create-variant.dto';
+import { UpdateVariantDto } from './dto/update-variant.dto';
 
 @ApiTags('Products')
 @Controller('products')
@@ -139,5 +141,60 @@ export class ProductsController {
   @ApiResponse({ status: 204, description: 'Product deleted successfully' })
   async remove(@Param('id') id: string, @Req() req: { user: JwtUser }) {
     await this.productsService.remove(id, req.user);
+  }
+
+  // VARIANTSSSS
+
+  @Post(':id/variants')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Add variant to product (Admin only)' })
+  @ApiParam({ name: 'id', description: 'Product ID' })
+  addVariant(
+    @Param('id') id: string,
+    @Body() createVariantDto: CreateVariantDto,
+    @Req() req: { user: JwtUser },
+  ) {
+    return this.productsService.addVariant(id, createVariantDto, req.user);
+  }
+
+  @Get(':id/variants')
+  @ApiOperation({ summary: 'Get all variants of a product' })
+  @ApiParam({ name: 'id', description: 'Product ID' })
+  getVariants(@Param('id') id: string) {
+    return this.productsService.getVariants(id);
+  }
+
+  @Patch('variants/:variantId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update variant (Admin only)' })
+  @ApiParam({ name: 'variantId', description: 'Variant ID' })
+  updateVariant(
+    @Param('variantId') variantId: string,
+    @Body() updateVariantDto: UpdateVariantDto,
+    @Req() req: { user: JwtUser },
+  ) {
+    return this.productsService.updateVariant(
+      variantId,
+      updateVariantDto,
+      req.user,
+    );
+  }
+
+  @Delete('variants/:variantId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Delete variant (Admin only)' })
+  @ApiParam({ name: 'variantId', description: 'Variant ID' })
+  async removeVariant(
+    @Param('variantId') variantId: string,
+    @Req() req: { user: JwtUser },
+  ) {
+    await this.productsService.removeVariant(variantId, req.user);
   }
 }
