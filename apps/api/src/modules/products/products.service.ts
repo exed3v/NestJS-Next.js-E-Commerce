@@ -10,12 +10,27 @@ import { JwtUser } from 'src/common/interfaces/jwt-payload';
 
 import { Inject } from '@nestjs/common';
 import { v2 as cloudinary } from 'cloudinary';
+import { CreateVariantDto } from './dto/create-variant.dto';
+import { UpdateVariantDto } from './dto/update-variant.dto';
 
 interface FindAllFilters {
   categoryId?: string;
   search?: string;
   minPrice?: number;
   maxPrice?: number;
+}
+
+interface ProductWhereInput {
+  isActive: boolean;
+  categoryId?: { in: string[] };
+  name?: { contains: string; mode: 'insensitive' };
+  price?: { gte?: number; lte?: number };
+}
+
+interface UploadedImage {
+  url: string;
+  isMain: boolean;
+  order: number;
 }
 
 @Injectable()
@@ -92,65 +107,6 @@ export class ProductsService {
     return publicIdWithExtension.split('.')[0];
   }
 
-  // async create(
-  //   createProductDto: CreateProductDto,
-  //   currentUser: JwtUser,
-  //   files: Express.Multer.File[],
-  // ) {
-  //   if (currentUser.role !== 'ADMIN') {
-  //     throw new ForbiddenException('Only admins can create products');
-  //   }
-
-  //   const slug = this.generateSlug(createProductDto.name);
-
-  //   // Subir imágenes a Cloudinary
-  //   const uploadedImages = await Promise.all(
-  //     files.map(async (file, index) => {
-  //       // Convertir buffer a base64 para subir
-  //       const base64 = file.buffer.toString('base64');
-  //       const dataUri = `data:${file.mimetype};base64,${base64}`;
-
-  //       const result = await this.cloudinaryClient.uploader.upload(dataUri, {
-  //         folder: 'products',
-  //       });
-
-  //       return {
-  //         url: result.secure_url,
-  //         isMain: index === 0,
-  //         order: index,
-  //       };
-  //     }),
-  //   );
-
-  //   // Crear producto con sus imágenes
-  //   return this.prisma.product.create({
-  //     data: {
-  //       name: createProductDto.name,
-  //       slug,
-  //       description: createProductDto.description,
-  //       price: createProductDto.price,
-  //       compareAtPrice: createProductDto.compareAtPrice,
-  //       costPerItem: createProductDto.costPerItem,
-  //       stock: createProductDto.stock ?? 0,
-  //       sku: createProductDto.sku,
-  //       barcode: createProductDto.barcode,
-  //       isActive: createProductDto.isActive ?? true,
-  //       isFeatured: createProductDto.isFeatured ?? false,
-  //       weight: createProductDto.weight,
-  //       categoryId: createProductDto.categoryId,
-  //       images: {
-  //         create: uploadedImages,
-  //       },
-  //     },
-  //     include: {
-  //       category: true,
-  //       images: {
-  //         orderBy: { order: 'asc' },
-  //       },
-  //     },
-  //   });
-  // }
-
   async create(
     createProductDto: CreateProductDto,
     currentUser: JwtUser,
@@ -166,7 +122,7 @@ export class ProductsService {
     const productData = this.transformProductData(createProductDto);
 
     // 2. Subir imágenes a Cloudinary (si hay archivos)
-    let uploadedImages: any[] = [];
+    let uploadedImages: UploadedImage[] = [];
     if (files && files.length > 0) {
       uploadedImages = await this.uploadImages(files); // Si falla, se detiene aquí
     }
@@ -187,23 +143,10 @@ export class ProductsService {
     });
   }
 
-  // async findAll() {
-  //   return this.prisma.product.findMany({
-  //     where: { isActive: true },
-  //     include: {
-  //       category: true,
-  //       images: {
-  //         orderBy: { order: 'asc' },
-  //       },
-  //     },
-  //     orderBy: { createdAt: 'desc' },
-  //   });
-  // }
-
   async findAll(filters: FindAllFilters = {}) {
     const { categoryId, search, minPrice, maxPrice } = filters;
 
-    const where: any = {
+    const where: ProductWhereInput = {
       isActive: true,
     };
 
@@ -240,8 +183,10 @@ export class ProductsService {
       include: {
         category: true,
         images: {
-          where: { isMain: true },
-          take: 1,
+          orderBy: { order: 'asc' },
+        },
+        variants: {
+          orderBy: [{ type: 'asc' }, { value: 'asc' }],
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -339,5 +284,81 @@ export class ProductsService {
     });
 
     return { message: 'Product deleted successfully' };
+  }
+
+  // VARIANTSSSS
+
+  async addVariant(
+    productId: string,
+    createVariantDto: CreateVariantDto,
+    currentUser: JwtUser,
+  ) {
+    if (currentUser.role !== 'ADMIN') {
+      throw new ForbiddenException('Only admins can manage variants');
+    }
+
+    // Verificar que el producto existe
+    await this.findOne(productId);
+
+    return this.prisma.productVariant.create({
+      data: {
+        productId,
+        type: createVariantDto.type,
+        value: createVariantDto.value,
+        price: createVariantDto.price,
+        stock: createVariantDto.stock ?? 0,
+        sku: createVariantDto.sku,
+      },
+    });
+  }
+
+  async getVariants(productId: string) {
+    await this.findOne(productId);
+
+    return this.prisma.productVariant.findMany({
+      where: { productId },
+      orderBy: [{ type: 'asc' }, { value: 'asc' }],
+    });
+  }
+
+  async updateVariant(
+    variantId: string,
+    updateVariantDto: UpdateVariantDto,
+    currentUser: JwtUser,
+  ) {
+    if (currentUser.role !== 'ADMIN') {
+      throw new ForbiddenException('Only admins can manage variants');
+    }
+
+    const variant = await this.prisma.productVariant.findUnique({
+      where: { id: variantId },
+    });
+
+    if (!variant) {
+      throw new NotFoundException('Variant not found');
+    }
+
+    return this.prisma.productVariant.update({
+      where: { id: variantId },
+      data: updateVariantDto,
+    });
+  }
+
+  async removeVariant(variantId: string, currentUser: JwtUser) {
+    if (currentUser.role !== 'ADMIN') {
+      throw new ForbiddenException('Only admins can manage variants');
+    }
+
+    const variant = await this.prisma.productVariant.findUnique({
+      where: { id: variantId },
+    });
+
+    if (!variant) {
+      throw new NotFoundException('Variant not found');
+    }
+
+    return this.prisma.productVariant.delete({
+      where: { id: variantId },
+    });
   }
 }

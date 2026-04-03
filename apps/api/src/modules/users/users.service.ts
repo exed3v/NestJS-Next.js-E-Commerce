@@ -24,6 +24,16 @@ export class UsersService {
         role: true,
         createdAt: true,
         updatedAt: true,
+        addresses: {
+          orderBy: { isDefault: 'desc' },
+        },
+        cart: {
+          include: {
+            items: {
+              take: 3,
+            },
+          },
+        },
       },
     });
   }
@@ -38,6 +48,24 @@ export class UsersService {
         role: true,
         createdAt: true,
         updatedAt: true,
+        cart: {
+          include: {
+            items: {
+              include: {
+                product: {
+                  include: {
+                    images: {
+                      where: { isMain: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        addresses: {
+          orderBy: { isDefault: 'desc' },
+        },
       },
     });
 
