@@ -1,4 +1,4 @@
-import { Address, Product } from "@/types";
+import { Product } from "@/types";
 
 export const categories = ["Camisetas", "Pantalones", "Chaquetas", "Zapatos"];
 
