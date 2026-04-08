@@ -1,8 +1,17 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+// auth.controller.ts
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Res,
+} from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags, ApiBody } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import type { Response } from 'express';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -13,7 +22,8 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'User login',
-    description: 'Authenticates a user and returns a JWT access token.',
+    description:
+      'Authenticates a user and returns a JWT access token via httpOnly cookie.',
   })
   @ApiBody({ type: LoginDto })
   @ApiResponse({
@@ -21,7 +31,6 @@ export class AuthController {
     description: 'Login successful',
     schema: {
       example: {
-        access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
         user: {
           id: 'cm8x1a2b3c4d5e6f7g8h9i0j',
           name: 'John Doe',
@@ -31,23 +40,31 @@ export class AuthController {
       },
     },
   })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: 'Invalid credentials',
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'Validation error - Invalid email format or missing fields',
-  })
-  signIn(@Body() dto: LoginDto) {
-    return this.authService.signIn(dto.email, dto.password);
+  async signIn(
+    @Body() dto: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { access_token, user } = await this.authService.signIn(
+      dto.email,
+      dto.password,
+    );
+
+    // Establecer cookie httpOnly
+    res.cookie('token', access_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
+      path: '/',
+    });
+
+    return { user };
   }
 
   @Post('register')
   @ApiOperation({
     summary: 'User registration',
-    description:
-      'Registers a new user. Creates user account and automatically returns a JWT token (auto-login). Address must be added later for purchases.',
+    description: 'Registers a new user and sets JWT cookie (auto-login).',
   })
   @ApiBody({ type: RegisterDto })
   @ApiResponse({
@@ -55,7 +72,6 @@ export class AuthController {
     description: 'User registered successfully',
     schema: {
       example: {
-        access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
         user: {
           id: 'cm8x1a2b3c4d5e6f7g8h9i0j',
           name: 'John Doe',
@@ -65,23 +81,38 @@ export class AuthController {
       },
     },
   })
+  async register(
+    @Body() dto: RegisterDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { access_token, user } = await this.authService.register(dto);
+
+    res.cookie('token', access_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/',
+    });
+
+    return { user };
+  }
+
+  // Endpoint de logout para limpiar la cookie
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'User logout' })
   @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description:
-      'Validation error - Invalid email, password too short, or missing fields',
+    status: HttpStatus.OK,
+    description: 'Logged out successfully',
   })
-  @ApiResponse({
-    status: HttpStatus.CONFLICT,
-    description: 'Email already in use',
-    schema: {
-      example: {
-        statusCode: 409,
-        message: 'Email already in use',
-        error: 'Conflict',
-      },
-    },
-  })
-  register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
+  logout(@Res({ passthrough: true }) res: Response) {
+    res.clearCookie('token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+    });
+    return { message: 'Logged out successfully' };
   }
 }

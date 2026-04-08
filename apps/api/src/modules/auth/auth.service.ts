@@ -30,6 +30,8 @@ export class AuthService {
 
     const payload = {
       sub: user.id,
+      email: user.email,
+      name: user.fullName,
       role: user.role,
     };
 
@@ -45,6 +47,7 @@ export class AuthService {
       },
     };
   }
+
   async register(data: RegisterDto) {
     const existingUser = await this.usersService.findByEmail(data.email);
 
@@ -57,9 +60,9 @@ export class AuthService {
     const payload = {
       sub: user.id,
       email: user.email,
+      name: user.fullName,
       role: user.role,
     };
-
     const token = await this.jwtService.signAsync(payload);
 
     return {
