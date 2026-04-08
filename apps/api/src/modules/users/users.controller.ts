@@ -32,6 +32,62 @@ import {
 export class UsersController {
   constructor(private userService: UsersService) {}
 
+  // ===== RUTAS PARA USUARIO AUTENTICADO =====
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current user profile' })
+  @ApiResponse({ status: 200, description: 'Current user profile' })
+  getMe(@Req() req: { user: JwtUser }) {
+    return this.userService.getUser(req.user.id, req.user);
+  }
+
+  @Patch('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Update current user profile',
+    description: "Updates the authenticated user's own profile.",
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Profile updated successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Unauthorized - Missing or invalid JWT token',
+  })
+  @ApiResponse({
+    status: HttpStatus.CONFLICT,
+    description: 'Conflict - Email already in use by another user',
+  })
+  updateMe(@Body() body: UpdateUserDto, @Req() req: { user: JwtUser }) {
+    return this.userService.updateUser(req.user.id, body, req.user);
+  }
+
+  @Delete('me')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Delete current user account',
+    description: "Deletes the authenticated user's own account.",
+  })
+  @ApiResponse({
+    status: HttpStatus.NO_CONTENT,
+    description: 'Account deleted successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Unauthorized - Missing or invalid JWT token',
+  })
+  deleteMe(@Req() req: { user: JwtUser }) {
+    return this.userService.deleteUser(req.user.id, req.user);
+  }
+
+  // ===== RUTAS PARA ADMIN =====
+
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')

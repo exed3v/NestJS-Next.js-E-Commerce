@@ -7,19 +7,19 @@ import { Button } from "../ui/Button";
 
 interface EditProfileFormProps {
   user: User;
-  onSave: (data: { name: string; email: string; phone: string }) => void;
+  onSave: (data: { fullName: string; email: string; phone: string }) => void;
 }
 
 const EditProfileForm = ({ user, onSave }: EditProfileFormProps) => {
   const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(user.name);
+  const [fullName, setfullName] = useState(user.fullName);
   const [email, setEmail] = useState(user.email);
   const [phone, setPhone] = useState(user.phone || "");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validate = () => {
     const errs: Record<string, string> = {};
-    if (!name.trim()) errs.name = "El nombre no puede estar vacío";
+    if (!fullName.trim()) errs.fullName = "El nombre no puede estar vacío";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       errs.email = "Email no válido";
     setErrors(errs);
@@ -28,13 +28,17 @@ const EditProfileForm = ({ user, onSave }: EditProfileFormProps) => {
 
   const handleSave = () => {
     if (!validate()) return;
-    onSave({ name: name.trim(), email: email.trim(), phone: phone.trim() });
+    onSave({
+      fullName: fullName.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+    });
     setEditing(false);
     toast.success("Perfil actualizado correctamente");
   };
 
   const handleCancel = () => {
-    setName(user.name);
+    setfullName(user.fullName);
     setEmail(user.email);
     setPhone(user.phone || "");
     setErrors({});
@@ -57,8 +61,8 @@ const EditProfileForm = ({ user, onSave }: EditProfileFormProps) => {
           <Label htmlFor="name">Nombre completo</Label>
           <Input
             id="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            value={fullName}
+            onChange={(e) => setfullName(e.target.value)}
             disabled={!editing}
           />
           {errors.name && (

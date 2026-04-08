@@ -22,7 +22,7 @@ export interface CartItem {
 }
 
 export interface User {
-  name: string;
+  fullName: string;
   email: string;
   phone?: string;
   memberSince?: string;
