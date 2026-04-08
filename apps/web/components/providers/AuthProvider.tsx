@@ -1,64 +1,40 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  ReactNode,
-} from "react";
-
-interface User {
-  name: string;
-  email: string;
-}
+import { createContext, useContext, ReactNode } from "react";
+import { RegisterInput, User, LoginInput } from "@/libs/types";
+import { useMe, useLogin, useRegister, useLogout } from "@/libs/hooks/useAuth";
 
 interface AuthContextType {
-  user: User | null;
-  login: (email: string, name?: string) => void;
-  logout: () => void;
+  user: User | null | undefined;
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  register: (data: RegisterInput) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const getUserFromStorage = (): User | null => {
-  if (typeof window === "undefined") return null;
-  const stored = localStorage.getItem("auth-user");
-  return stored ? JSON.parse(stored) : null;
-};
-
-const saveUserToStorage = (user: User) => {
-  localStorage.setItem("auth-user", JSON.stringify(user));
-};
-
-const removeUserFromStorage = () => {
-  localStorage.removeItem("auth-user");
-};
-
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [mounted, setMounted] = useState(false);
+  const { data: user, isLoading } = useMe();
+  const loginMutation = useLogin();
+  const registerMutation = useRegister();
+  const logoutMutation = useLogout();
 
-  useEffect(() => {
-    setUser(getUserFromStorage());
-    setMounted(true);
-  }, []);
-
-  const login = (email: string, name?: string) => {
-    const u: User = { name: name || email.split("@")[0], email };
-    saveUserToStorage(u);
-    setUser(u);
+  const login = async (email: string, password: string) => {
+    const input: LoginInput = { email, password };
+    await loginMutation.mutateAsync(input);
   };
 
-  const logout = () => {
-    removeUserFromStorage();
-    setUser(null);
+  const register = async (data: RegisterInput) => {
+    await registerMutation.mutateAsync(data);
   };
 
-  if (!mounted) return null;
+  const logout = async () => {
+    await logoutMutation.mutateAsync();
+  };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

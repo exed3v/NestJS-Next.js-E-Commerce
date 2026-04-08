@@ -19,7 +19,7 @@ const ProfileSidebar = ({
   onTabChange,
   onLogout,
 }: ProfileSidebarProps) => {
-  const initials = user.name
+  const initials = user.fullName
     .split(" ")
     .map((w) => w[0])
     .join("")
@@ -51,7 +51,7 @@ const ProfileSidebar = ({
             </AvatarFallback>
           </Avatar>
           <div className="text-center">
-            <p className="font-semibold text-foreground">{user.name}</p>
+            <p className="font-semibold text-foreground">{user.fullName}</p>
             <p className="text-sm text-muted-foreground">{user.email}</p>
           </div>
         </div>

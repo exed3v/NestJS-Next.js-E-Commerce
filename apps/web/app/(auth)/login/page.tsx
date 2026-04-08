@@ -11,13 +11,15 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { Button } from "@/components/ui/Button";
 
 const LoginPage = () => {
-  const { login } = useAuth();
+  const { login, isLoading } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       toast.error("Introduce un email válido.");
       return;
@@ -26,10 +28,32 @@ const LoginPage = () => {
       toast.error("La contraseña debe tener al menos 6 caracteres.");
       return;
     }
-    login(email);
-    toast.success("¡Bienvenido de vuelta!");
-    router.push("/");
+
+    setIsSubmitting(true);
+
+    try {
+      await login(email, password);
+      toast.success("¡Bienvenido de vuelta!");
+      router.push("/");
+      router.refresh();
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Credenciales inválidas";
+      toast.error(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto flex min-h-[60vh] items-center justify-center px-4 py-16">
+        <div className="text-center">
+          <p className="text-muted-foreground">Verificando sesión...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto flex min-h-[60vh] items-center justify-center px-4 py-16">
@@ -44,6 +68,7 @@ const LoginPage = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              disabled={isSubmitting}
             />
           </div>
           <div>
@@ -54,10 +79,11 @@ const LoginPage = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              disabled={isSubmitting}
             />
           </div>
-          <Button type="submit" className="w-full">
-            Iniciar sesión
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? "Iniciando sesión..." : "Iniciar sesión"}
           </Button>
         </form>
         <p className="mt-4 text-center text-sm text-muted-foreground">
