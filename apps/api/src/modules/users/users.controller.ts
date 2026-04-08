@@ -25,7 +25,9 @@ import {
   ApiResponse,
   ApiTags,
   ApiParam,
+  ApiBody,
 } from '@nestjs/swagger';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @ApiTags('Users')
 @Controller('users')
@@ -64,6 +66,21 @@ export class UsersController {
   })
   updateMe(@Body() body: UpdateUserDto, @Req() req: { user: JwtUser }) {
     return this.userService.updateUser(req.user.id, body, req.user);
+  }
+
+  @Post('me/change-password')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Change current user password' })
+  @ApiBody({ type: ChangePasswordDto })
+  @ApiResponse({ status: 200, description: 'Password changed successfully' })
+  @ApiResponse({ status: 401, description: 'Current password is incorrect' })
+  async changePassword(
+    @Body() dto: ChangePasswordDto,
+    @Req() req: { user: JwtUser },
+  ) {
+    return this.userService.changePassword(req.user.id, dto);
   }
 
   @Delete('me')

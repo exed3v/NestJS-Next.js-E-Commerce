@@ -1,11 +1,11 @@
-import { User } from "@/types";
 import { Separator } from "@/components/ui/separator";
 import EditProfileForm from "./EditProfileForm";
 import DeleteAccountModal from "./DeleteAccountModal";
+import { User } from "@/libs/types";
 
 interface ProfileDataProps {
   user: User;
-  onSave: (data: { name: string; email: string; phone: string }) => void;
+  onSave: (data: { fullName: string; email: string }) => void;
   onDelete: () => void;
 }
 
@@ -20,6 +20,16 @@ const ProfileData = ({ user, onSave, onDelete }: ProfileDataProps) => (
       </p>
       <DeleteAccountModal onConfirm={onDelete} />
     </div>
+    <p className="text-xs text-muted-foreground/40 border-t border-border/30 pt-3">
+      Miembro desde:{" "}
+      {user.createdAt
+        ? new Date(user.createdAt).toLocaleDateString("es-ES", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })
+        : "N/A"}
+    </p>
   </div>
 );
 

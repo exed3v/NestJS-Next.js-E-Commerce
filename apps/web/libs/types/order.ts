@@ -21,12 +21,18 @@ export interface OrderItem {
   orderId: string;
   productId: string;
   variantId: string | null;
-  productName: string;
+  productName: string; // ✅ Para item.name
   productSku: string | null;
-  variantInfo: Record<string, any> | null;
-  unitPrice: number;
+  variantInfo: {
+    size?: string; // ✅ Para item.size
+    color?: string; // ✅ Para item.color
+  } | null;
+  unitPrice: number; // ✅ Para item.price
   quantity: number;
   total: number;
+
+  // Campos adicionales para el frontend
+  image?: string; // ✅ Imagen del producto (se puede agregar desde el backend)
 }
 
 export interface Order {
@@ -55,7 +61,6 @@ export interface Order {
   createdAt: string;
   updatedAt: string;
 }
-
 export interface CheckoutInput {
   shippingAddressId: string;
   billingAddressId?: string;

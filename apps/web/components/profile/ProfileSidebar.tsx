@@ -1,9 +1,9 @@
 import { User as UserIcon, ShoppingBag, MapPin, LogOut } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { User } from "@/types";
 import { cn } from "@/libs/utils/utils";
 import { Button } from "../ui/Button";
+import { User } from "@/libs/types";
 type Tab = "datos" | "ordenes" | "direcciones";
 
 interface ProfileSidebarProps {

@@ -32,7 +32,8 @@ pnpm-debug.log*
 .env
 .env.local
 !.env.example
-
+.env.production
+.env*.local
 # =========================
 # OS
 # =========================
