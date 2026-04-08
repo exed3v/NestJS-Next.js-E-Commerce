@@ -1,42 +1,54 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { User } from "@/types";
 import { toast } from "sonner";
 import { Button } from "../ui/Button";
+import { User } from "@/libs/types";
 
 interface EditProfileFormProps {
   user: User;
-  onSave: (data: { name: string; email: string; phone: string }) => void;
+  onSave: (data: { fullName: string; email: string }) => void;
 }
 
 const EditProfileForm = ({ user, onSave }: EditProfileFormProps) => {
   const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(user.name);
+  const [fullName, setFullName] = useState(user.fullName || "");
   const [email, setEmail] = useState(user.email);
-  const [phone, setPhone] = useState(user.phone || "");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const validate = () => {
     const errs: Record<string, string> = {};
-    if (!name.trim()) errs.name = "El nombre no puede estar vacío";
+    if (!fullName.trim()) errs.fullName = "El nombre no puede estar vacío";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       errs.email = "Email no válido";
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validate()) return;
-    onSave({ name: name.trim(), email: email.trim(), phone: phone.trim() });
-    setEditing(false);
-    toast.success("Perfil actualizado correctamente");
+
+    setIsSubmitting(true);
+    try {
+      await onSave({
+        fullName: fullName.trim(),
+        email: email.trim(),
+      });
+      setEditing(false);
+      toast.success("Perfil actualizado correctamente");
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Error al actualizar";
+      toast.error(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleCancel = () => {
-    setName(user.name);
+    setFullName(user.fullName || "");
     setEmail(user.email);
-    setPhone(user.phone || "");
     setErrors({});
     setEditing(false);
   };
@@ -54,15 +66,15 @@ const EditProfileForm = ({ user, onSave }: EditProfileFormProps) => {
 
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="name">Nombre completo</Label>
+          <Label htmlFor="fullName">Nombre completo</Label>
           <Input
-            id="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            disabled={!editing}
+            id="fullName"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            disabled={!editing || isSubmitting}
           />
-          {errors.name && (
-            <p className="text-sm text-destructive">{errors.name}</p>
+          {errors.fullName && (
+            <p className="text-sm text-destructive">{errors.fullName}</p>
           )}
         </div>
         <div className="space-y-2">
@@ -72,36 +84,24 @@ const EditProfileForm = ({ user, onSave }: EditProfileFormProps) => {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            disabled={!editing}
+            disabled={!editing || isSubmitting}
           />
           {errors.email && (
             <p className="text-sm text-destructive">{errors.email}</p>
           )}
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="phone">Teléfono (opcional)</Label>
-          <Input
-            id="phone"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            disabled={!editing}
-            placeholder="+34 000 000 000"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Miembro desde</Label>
-          <Input
-            value={user.memberSince || "Enero 2025"}
-            disabled
-            className="text-muted-foreground"
-          />
-        </div>
       </div>
 
       {editing && (
         <div className="flex gap-3 pt-2">
-          <Button onClick={handleSave}>Guardar cambios</Button>
-          <Button variant="ghost" onClick={handleCancel}>
+          <Button onClick={handleSave} disabled={isSubmitting}>
+            {isSubmitting ? "Guardando..." : "Guardar cambios"}
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={handleCancel}
+            disabled={isSubmitting}
+          >
             Cancelar
           </Button>
         </div>

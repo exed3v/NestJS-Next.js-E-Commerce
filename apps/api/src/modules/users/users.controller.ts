@@ -25,12 +25,85 @@ import {
   ApiResponse,
   ApiTags,
   ApiParam,
+  ApiBody,
 } from '@nestjs/swagger';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @ApiTags('Users')
 @Controller('users')
 export class UsersController {
   constructor(private userService: UsersService) {}
+
+  // ===== RUTAS PARA USUARIO AUTENTICADO =====
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current user profile' })
+  @ApiResponse({ status: 200, description: 'Current user profile' })
+  getMe(@Req() req: { user: JwtUser }) {
+    return this.userService.getUser(req.user.id, req.user);
+  }
+
+  @Patch('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Update current user profile',
+    description: "Updates the authenticated user's own profile.",
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Profile updated successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Unauthorized - Missing or invalid JWT token',
+  })
+  @ApiResponse({
+    status: HttpStatus.CONFLICT,
+    description: 'Conflict - Email already in use by another user',
+  })
+  updateMe(@Body() body: UpdateUserDto, @Req() req: { user: JwtUser }) {
+    return this.userService.updateUser(req.user.id, body, req.user);
+  }
+
+  @Post('me/change-password')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Change current user password' })
+  @ApiBody({ type: ChangePasswordDto })
+  @ApiResponse({ status: 200, description: 'Password changed successfully' })
+  @ApiResponse({ status: 401, description: 'Current password is incorrect' })
+  async changePassword(
+    @Body() dto: ChangePasswordDto,
+    @Req() req: { user: JwtUser },
+  ) {
+    return this.userService.changePassword(req.user.id, dto);
+  }
+
+  @Delete('me')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Delete current user account',
+    description: "Deletes the authenticated user's own account.",
+  })
+  @ApiResponse({
+    status: HttpStatus.NO_CONTENT,
+    description: 'Account deleted successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Unauthorized - Missing or invalid JWT token',
+  })
+  deleteMe(@Req() req: { user: JwtUser }) {
+    return this.userService.deleteUser(req.user.id, req.user);
+  }
+
+  // ===== RUTAS PARA ADMIN =====
 
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)

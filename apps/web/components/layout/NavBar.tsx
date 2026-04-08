@@ -102,7 +102,7 @@ const Navbar = () => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="gap-1 text-sm">
-                  {user.name}
+                  {user.fullName}
                   <ChevronDown className="h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
@@ -195,7 +195,7 @@ const Navbar = () => {
             {user ? (
               <>
                 <span className="px-3 py-2 text-sm font-medium">
-                  {user.name}
+                  {user.fullName}
                 </span>
                 <button
                   onClick={() => {
