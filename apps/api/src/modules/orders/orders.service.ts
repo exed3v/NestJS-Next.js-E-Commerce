@@ -194,7 +194,18 @@ export class OrdersService {
       where: { userId },
       orderBy: { createdAt: 'desc' },
       include: {
-        items: true,
+        items: {
+          include: {
+            product: {
+              include: {
+                images: {
+                  where: { isMain: true },
+                  take: 1,
+                },
+              },
+            },
+          },
+        },
         shippingAddress: true,
       },
     });
@@ -204,7 +215,18 @@ export class OrdersService {
     const order = await this.prisma.order.findUnique({
       where: { id },
       include: {
-        items: true,
+        items: {
+          include: {
+            product: {
+              include: {
+                images: {
+                  where: { isMain: true },
+                  take: 1,
+                },
+              },
+            },
+          },
+        },
         shippingAddress: true,
         billingAddress: true,
         user: {
@@ -224,11 +246,22 @@ export class OrdersService {
     return order;
   }
 
-  async findAll() {
+  async findAllAdmin() {
     return this.prisma.order.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
-        items: true,
+        items: {
+          include: {
+            product: {
+              include: {
+                images: {
+                  where: { isMain: true },
+                  take: 1,
+                },
+              },
+            },
+          },
+        },
         user: {
           select: { id: true, email: true, fullName: true },
         },
@@ -241,7 +274,18 @@ export class OrdersService {
     const order = await this.prisma.order.findUnique({
       where: { id },
       include: {
-        items: true,
+        items: {
+          include: {
+            product: {
+              include: {
+                images: {
+                  where: { isMain: true },
+                  take: 1,
+                },
+              },
+            },
+          },
+        },
         shippingAddress: true,
         billingAddress: true,
         user: {
@@ -257,7 +301,7 @@ export class OrdersService {
     return order;
   }
 
-  async updateStatus(id: string, status: OrderStatus) {
+  async updateStatusAdmin(id: string, status: OrderStatus) {
     const order = await this.prisma.order.findUnique({
       where: { id },
     });
@@ -291,7 +335,7 @@ export class OrdersService {
       },
     });
   }
-  // orders.service.ts
+
   async cancelOrder(orderId: string, userId: string, reason?: string) {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },

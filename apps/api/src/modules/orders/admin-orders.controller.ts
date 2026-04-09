@@ -1,6 +1,6 @@
 // modules/orders/admin-orders.controller.ts
 import { Controller, Get, Param, Patch, Body, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -11,14 +11,14 @@ import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 @Controller('admin/orders')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('ADMIN')
-@ApiBearerAuth()
+@ApiCookieAuth('token')
 export class AdminOrdersController {
   constructor(private ordersService: OrdersService) {}
 
   @Get()
   @ApiOperation({ summary: 'Get all orders (admin only)' })
   getAllOrders() {
-    return this.ordersService.findAll();
+    return this.ordersService.findAllAdmin();
   }
 
   @Get(':id')
@@ -33,6 +33,6 @@ export class AdminOrdersController {
     @Param('id') id: string,
     @Body() updateStatusDto: UpdateOrderStatusDto,
   ) {
-    return this.ordersService.updateStatus(id, updateStatusDto.status);
+    return this.ordersService.updateStatusAdmin(id, updateStatusDto.status);
   }
 }

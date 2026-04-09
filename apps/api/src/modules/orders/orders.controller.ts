@@ -10,7 +10,7 @@ import {
   Patch,
 } from '@nestjs/common';
 import {
-  ApiBearerAuth,
+  ApiCookieAuth,
   ApiOperation,
   ApiParam,
   ApiResponse,
@@ -25,7 +25,7 @@ import { CancelOrderDto } from './dto/cancel-order.dto';
 @ApiTags('Orders')
 @Controller('orders')
 @UseGuards(JwtAuthGuard)
-@ApiBearerAuth()
+@ApiCookieAuth('token')
 export class OrdersController {
   constructor(private ordersService: OrdersService) {}
 
@@ -47,7 +47,6 @@ export class OrdersController {
     return this.ordersService.createFromCart(req.user.id, checkoutDto);
   }
 
-  // orders.controller.ts
   @Patch(':id/cancel')
   @ApiOperation({
     summary: 'Cancel an order (only if PENDING and within 1 hour)',
