@@ -1,23 +1,15 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  ReactNode,
-} from "react";
+import { createContext, useContext, ReactNode } from "react";
 import { toast } from "sonner";
-
-export interface CartItem {
-  productId: string;
-  productName: string;
-  price: number;
-  size: string;
-  color: string;
-  quantity: number;
-  image?: string;
-}
+import {
+  useCartQuery,
+  useAddToCart,
+  useUpdateCartItem,
+  useRemoveCartItem,
+  useClearCart,
+} from "@/libs/hooks/useCart";
+import { CartItem } from "@/libs/types";
 
 interface CartContextType {
   items: CartItem[];
@@ -25,112 +17,87 @@ interface CartContextType {
     productId: string,
     productName: string,
     price: number,
-    size: string,
-    color: string,
-    quantity: number,
-    image?: string,
-  ) => void;
-  removeItem: (productId: string, size: string, color: string) => void;
-  updateQuantity: (
-    productId: string,
-    size: string,
-    color: string,
+    variantId: string | undefined,
     quantity: number,
   ) => void;
+  removeItem: (itemId: string) => void;
+  updateQuantity: (itemId: string, quantity: number) => void;
   clearCart: () => void;
   totalItems: number;
   subtotal: number;
+  isLoading: boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-const getCartFromStorage = (): CartItem[] => {
-  if (typeof window === "undefined") return [];
-  const stored = localStorage.getItem("cart");
-  return stored ? JSON.parse(stored) : [];
-};
-
-const saveCartToStorage = (items: CartItem[]) => {
-  localStorage.setItem("cart", JSON.stringify(items));
-};
-
 export const CartProvider = ({ children }: { children: ReactNode }) => {
-  const [items, setItems] = useState<CartItem[]>([]);
-  const [mounted, setMounted] = useState(false);
+  const { data: cart, isLoading } = useCartQuery();
+  const addToCart = useAddToCart();
+  const updateItem = useUpdateCartItem();
+  const removeItemMutation = useRemoveCartItem();
+  const clearCartMutation = useClearCart();
 
-  useEffect(() => {
-    setItems(getCartFromStorage());
-    setMounted(true);
-  }, []);
+  const items = cart?.items || [];
+  const totalItems = cart?.totalItems || 0;
+  const subtotal = cart?.subtotal || 0;
 
-  useEffect(() => {
-    if (mounted) {
-      saveCartToStorage(items);
-    }
-  }, [items, mounted]);
-
-  const addItem = (
+  const addItem = async (
     productId: string,
     productName: string,
     price: number,
-    size: string,
-    color: string,
-    quantity: number,
-    image?: string,
-  ) => {
-    setItems((prev) => {
-      const existing = prev.find(
-        (i) =>
-          i.productId === productId && i.size === size && i.color === color,
-      );
-      if (existing) {
-        return prev.map((i) =>
-          i.productId === productId && i.size === size && i.color === color
-            ? { ...i, quantity: i.quantity + quantity }
-            : i,
-        );
-      }
-      return [
-        ...prev,
-        { productId, productName, price, size, color, quantity, image },
-      ];
-    });
-    toast.success(`${productName} añadido al carrito`);
-  };
-
-  const removeItem = (productId: string, size: string, color: string) => {
-    setItems((prev) =>
-      prev.filter(
-        (i) =>
-          !(i.productId === productId && i.size === size && i.color === color),
-      ),
-    );
-    toast.info("Producto eliminado del carrito");
-  };
-
-  const updateQuantity = (
-    productId: string,
-    size: string,
-    color: string,
+    variantId: string | undefined,
     quantity: number,
   ) => {
+    try {
+      await addToCart.mutateAsync({
+        productId,
+        variantId,
+        quantity,
+      });
+      toast.success(`${productName} añadido al carrito`);
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Error al añadir";
+      toast.error(message);
+    }
+  };
+
+  const removeItem = async (itemId: string) => {
+    try {
+      await removeItemMutation.mutateAsync(itemId);
+      toast.info("Producto eliminado del carrito");
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Error al eliminar";
+      toast.error(message);
+    }
+  };
+
+  const updateQuantity = async (itemId: string, quantity: number) => {
     if (quantity <= 0) {
-      removeItem(productId, size, color);
+      removeItem(itemId);
       return;
     }
-    setItems((prev) =>
-      prev.map((i) =>
-        i.productId === productId && i.size === size && i.color === color
-          ? { ...i, quantity }
-          : i,
-      ),
-    );
+
+    try {
+      await updateItem.mutateAsync({ itemId, data: { quantity } });
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Error al actualizar";
+      toast.error(message);
+    }
   };
 
-  const clearCart = () => setItems([]);
-
-  const totalItems = items.reduce((acc, i) => acc + i.quantity, 0);
-  const subtotal = items.reduce((acc, i) => acc + i.price * i.quantity, 0);
+  const clearCart = async () => {
+    try {
+      await clearCartMutation.mutateAsync();
+      toast.info("Carrito vaciado");
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Error al vaciar";
+      toast.error(message);
+    }
+  };
 
   return (
     <CartContext.Provider
@@ -142,6 +109,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         clearCart,
         totalItems,
         subtotal,
+        isLoading,
       }}
     >
       {children}

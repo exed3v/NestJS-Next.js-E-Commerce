@@ -1,11 +1,8 @@
-"use client";
-
+import { productsApi } from "@/libs/api/products";
 import HomePage from "@/components/home/Home";
 
-export default function Home() {
-  return (
-    <main className="min-h-screen">
-      <HomePage />
-    </main>
-  );
+export default async function Page() {
+  const featuredProducts = await productsApi.getAll({ isFeatured: true });
+
+  return <HomePage featuredProducts={featuredProducts} />;
 }

@@ -18,6 +18,7 @@ interface FindAllFilters {
   search?: string;
   minPrice?: number;
   maxPrice?: number;
+  isFeatured?: boolean;
 }
 
 interface ProductWhereInput {
@@ -25,6 +26,7 @@ interface ProductWhereInput {
   categoryId?: { in: string[] };
   name?: { contains: string; mode: 'insensitive' };
   price?: { gte?: number; lte?: number };
+  isFeatured?: boolean;
 }
 
 interface UploadedImage {
@@ -144,11 +146,15 @@ export class ProductsService {
   }
 
   async findAll(filters: FindAllFilters = {}) {
-    const { categoryId, search, minPrice, maxPrice } = filters;
+    const { categoryId, search, minPrice, maxPrice, isFeatured } = filters;
 
     const where: ProductWhereInput = {
       isActive: true,
     };
+
+    if (isFeatured !== undefined) {
+      where.isFeatured = isFeatured;
+    }
 
     // Filtro por categoría (incluye subcategorías)
     if (categoryId) {

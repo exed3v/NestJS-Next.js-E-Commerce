@@ -4,13 +4,19 @@ import HeroSection from "@/components/home/HeroSection";
 import CategoriesSection from "@/components/home/CategoriesSection";
 import FeaturedProducts from "@/components/home/FeaturedProducts";
 import TestimonialsSection from "@/components/home/TestimonialsSection";
+import { Product } from "@/libs/types";
 
-export default function HomePage() {
+interface HomePageProps {
+  featuredProducts: Product[];
+}
+
+export default function HomePage({ featuredProducts }: HomePageProps) {
+  console.log("productsss en HomePage", featuredProducts);
   return (
     <main>
       <HeroSection />
       <CategoriesSection />
-      <FeaturedProducts />
+      <FeaturedProducts products={featuredProducts} />
       <TestimonialsSection />
     </main>
   );
