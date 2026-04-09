@@ -8,7 +8,6 @@ import ProfileOrders from "@/components/profile/ProfileOrders";
 import ProfileAddresses from "@/components/profile/ProfileAddresses";
 import { toast } from "sonner";
 import { useAuth } from "@/components/providers/AuthProvider";
-import { mockOrders } from "@/data/orders"; // Temporal hasta conectar órdenes
 import { useDeleteMe, useUpdateMe } from "@/libs/hooks/useUsers";
 
 type Tab = "datos" | "ordenes" | "direcciones";
