@@ -25,17 +25,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
     const firstVariant = product.variants?.[0];
-    if (firstVariant) {
-      addItem(
-        product.id,
-        product.name,
-        product.price,
-        firstVariant.type === "size" ? firstVariant.value : "Único",
-        firstVariant.type === "color" ? firstVariant.value : "Default",
-        1,
-        mainImage,
-      );
-    }
+    addItem(product.id, product.name, product.price, firstVariant?.id, 1);
   };
 
   return (
