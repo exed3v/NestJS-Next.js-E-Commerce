@@ -7,9 +7,13 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { JwtUser } from '../../common/interfaces/jwt-payload';
+import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
 @Injectable()
 export class CategoriesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private cloudinaryService: CloudinaryService,
+  ) {}
 
   private generateSlug(name: string): string {
     return name
@@ -20,19 +24,48 @@ export class CategoriesService {
       .replace(/^-|-$/g, '');
   }
 
-  async create(createCategoryDto: CreateCategoryDto, currentUser: JwtUser) {
+  async create(
+    createCategoryDto: CreateCategoryDto,
+    currentUser: JwtUser,
+    file?: Express.Multer.File,
+  ) {
     if (currentUser.role !== 'ADMIN') {
       throw new ForbiddenException('Only admins can create categories');
     }
 
     const slug = this.generateSlug(createCategoryDto.name);
 
+    // 1. Validar que el nombre no exista
+    const existing = await this.prisma.category.findUnique({
+      where: { name: createCategoryDto.name },
+    });
+    if (existing) {
+      throw new ForbiddenException('Category with this name already exists');
+    }
+
+    // 2. Validar parentId si se proporciona
+    if (createCategoryDto.parentId) {
+      const parent = await this.prisma.category.findUnique({
+        where: { id: createCategoryDto.parentId },
+      });
+      if (!parent) {
+        throw new NotFoundException('Parent category not found');
+      }
+    }
+
+    // 3. Subir imagen a Cloudinary (si hay archivo)
+    let imageUrl: string | undefined;
+    if (file) {
+      imageUrl = await this.cloudinaryService.uploadSingle(file, 'categories');
+    }
+
+    // 4. Crear categoría
     return this.prisma.category.create({
       data: {
         name: createCategoryDto.name,
         slug,
         description: createCategoryDto.description,
-        image: createCategoryDto.image,
+        image: imageUrl,
         parentId: createCategoryDto.parentId || null,
       },
     });

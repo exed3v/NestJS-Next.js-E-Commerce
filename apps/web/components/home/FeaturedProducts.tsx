@@ -1,10 +1,16 @@
 "use client";
 
-import { products } from "@/data/products";
+import { Product } from "@/libs/types";
 import ProductCard from "../products/ProductCard";
 
-const FeaturedProducts = () => {
+interface FeaturedProductsProps {
+  products: Product[];
+}
+
+const FeaturedProducts = ({ products }: FeaturedProductsProps) => {
   const featured = products.slice(0, 4);
+
+  if (!featured.length) return null;
 
   return (
     <section className="container mx-auto px-4 pb-16">

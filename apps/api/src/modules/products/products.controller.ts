@@ -92,12 +92,14 @@ export class ProductsController {
     @Query('search') search?: string,
     @Query('minPrice') minPrice?: number,
     @Query('maxPrice') maxPrice?: number,
+    @Query('isFeatured') isFeatured?: string,
   ) {
     return this.productsService.findAll({
       categoryId,
       search,
       minPrice,
       maxPrice,
+      isFeatured: isFeatured === 'true',
     });
   }
 

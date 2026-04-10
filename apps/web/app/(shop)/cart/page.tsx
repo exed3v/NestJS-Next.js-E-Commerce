@@ -7,7 +7,15 @@ import { ShoppingBag, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 const CartPage = () => {
-  const { items, clearCart, subtotal } = useCart();
+  const { items, clearCart, subtotal, isLoading } = useCart();
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto flex min-h-[50vh] items-center justify-center px-4 py-16">
+        <p className="text-muted-foreground">Cargando carrito...</p>
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (
@@ -41,10 +49,7 @@ const CartPage = () => {
       <div className="mt-6 grid gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2">
           {items.map((item) => (
-            <CartItemRow
-              key={`${item.productId}-${item.size}-${item.color}`}
-              item={item}
-            />
+            <CartItemRow key={item.id} item={item} />
           ))}
         </div>
 
@@ -57,7 +62,9 @@ const CartPage = () => {
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Envío</span>
-              <span className="text-muted-foreground">Gratis</span>
+              <span className="text-muted-foreground">
+                Calculado en checkout
+              </span>
             </div>
           </div>
           <div className="mt-4 border-t border-border pt-4">

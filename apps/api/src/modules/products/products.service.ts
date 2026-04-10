@@ -12,12 +12,17 @@ import { Inject } from '@nestjs/common';
 import { v2 as cloudinary } from 'cloudinary';
 import { CreateVariantDto } from './dto/create-variant.dto';
 import { UpdateVariantDto } from './dto/update-variant.dto';
+import {
+  CloudinaryService,
+  UploadedImage,
+} from 'src/common/cloudinary/cloudinary.service';
 
 interface FindAllFilters {
   categoryId?: string;
   search?: string;
   minPrice?: number;
   maxPrice?: number;
+  isFeatured?: boolean;
 }
 
 interface ProductWhereInput {
@@ -25,12 +30,7 @@ interface ProductWhereInput {
   categoryId?: { in: string[] };
   name?: { contains: string; mode: 'insensitive' };
   price?: { gte?: number; lte?: number };
-}
-
-interface UploadedImage {
-  url: string;
-  isMain: boolean;
-  order: number;
+  isFeatured?: boolean;
 }
 
 @Injectable()
@@ -38,6 +38,7 @@ export class ProductsService {
   constructor(
     private prisma: PrismaService,
     @Inject('CLOUDINARY') private cloudinaryClient: typeof cloudinary,
+    private cloudinaryService: CloudinaryService,
   ) {}
 
   private generateSlug(name: string): string {
@@ -47,23 +48,6 @@ export class ProductsService {
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
-  }
-
-  private async uploadImages(files: Express.Multer.File[]) {
-    return Promise.all(
-      files.map(async (file, index) => {
-        const base64 = file.buffer.toString('base64');
-        const dataUri = `data:${file.mimetype};base64,${base64}`;
-        const result = await this.cloudinaryClient.uploader.upload(dataUri, {
-          folder: 'products',
-        });
-        return {
-          url: result.secure_url,
-          isMain: index === 0,
-          order: index,
-        };
-      }),
-    );
   }
 
   private transformProductData(dto: CreateProductDto) {
@@ -86,27 +70,6 @@ export class ProductsService {
     };
   }
 
-  private async deleteImagesFromCloudinary(images: { url: string }[]) {
-    if (images.length === 0) return;
-
-    await Promise.all(
-      images.map(async (image) => {
-        const publicId = this.extractPublicIdFromUrl(image.url);
-        try {
-          await this.cloudinaryClient.uploader.destroy(publicId);
-        } catch (error) {
-          console.error(`Failed to delete image ${publicId}:`, error);
-        }
-      }),
-    );
-  }
-
-  private extractPublicIdFromUrl(url: string): string {
-    const urlParts = url.split('/');
-    const publicIdWithExtension = urlParts.slice(-2).join('/');
-    return publicIdWithExtension.split('.')[0];
-  }
-
   async create(
     createProductDto: CreateProductDto,
     currentUser: JwtUser,
@@ -124,7 +87,10 @@ export class ProductsService {
     // 2. Subir imágenes a Cloudinary (si hay archivos)
     let uploadedImages: UploadedImage[] = [];
     if (files && files.length > 0) {
-      uploadedImages = await this.uploadImages(files); // Si falla, se detiene aquí
+      uploadedImages = await this.cloudinaryService.uploadMultiple(
+        files,
+        'products',
+      );
     }
 
     return this.prisma.product.create({
@@ -144,11 +110,15 @@ export class ProductsService {
   }
 
   async findAll(filters: FindAllFilters = {}) {
-    const { categoryId, search, minPrice, maxPrice } = filters;
+    const { categoryId, search, minPrice, maxPrice, isFeatured } = filters;
 
     const where: ProductWhereInput = {
       isActive: true,
     };
+
+    if (isFeatured !== undefined) {
+      where.isFeatured = isFeatured;
+    }
 
     // Filtro por categoría (incluye subcategorías)
     if (categoryId) {
@@ -275,8 +245,9 @@ export class ProductsService {
       throw new NotFoundException(`Product with ID ${id} not found`);
     }
 
-    // Eliminar imágenes de Cloudinary
-    await this.deleteImagesFromCloudinary(product.images);
+    if (product.images?.length) {
+      await this.cloudinaryService.deleteImages(product.images);
+    }
 
     // Eliminar producto de la BD
     await this.prisma.product.delete({

@@ -10,13 +10,16 @@ import {
   Req,
   HttpCode,
   HttpStatus,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
   ApiResponse,
-  ApiTags,
   ApiParam,
+  ApiBody,
+  ApiConsumes,
 } from '@nestjs/swagger';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
@@ -25,6 +28,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtUser } from '../../common/interfaces/jwt-payload';
+import { FileInterceptor } from '@nestjs/platform-express';
 @Controller('categories')
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
@@ -32,14 +36,28 @@ export class CategoriesController {
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
+  @UseInterceptors(FileInterceptor('image'))
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new category (Admin only)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', example: 'Remeras' },
+        description: { type: 'string' },
+        parentId: { type: 'string' },
+        image: { type: 'string', format: 'binary' },
+      },
+    },
+  })
   @ApiResponse({ status: 201, description: 'Category created successfully' })
-  create(
+  async create(
     @Body() createCategoryDto: CreateCategoryDto,
+    @UploadedFile() file: Express.Multer.File,
     @Req() req: { user: JwtUser },
   ) {
-    return this.categoriesService.create(createCategoryDto, req.user);
+    return this.categoriesService.create(createCategoryDto, req.user, file);
   }
 
   @Get()
