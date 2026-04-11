@@ -8,8 +8,6 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { JwtUser } from 'src/common/interfaces/jwt-payload';
 
-import { Inject } from '@nestjs/common';
-import { v2 as cloudinary } from 'cloudinary';
 import { CreateVariantDto } from './dto/create-variant.dto';
 import { UpdateVariantDto } from './dto/update-variant.dto';
 import {
@@ -20,9 +18,9 @@ import {
 interface FindAllFilters {
   categoryId?: string;
   search?: string;
-  minPrice?: number;
-  maxPrice?: number;
-  isFeatured?: boolean;
+  minPrice?: string;
+  maxPrice?: string;
+  isFeatured?: string;
 }
 
 interface ProductWhereInput {
@@ -37,7 +35,6 @@ interface ProductWhereInput {
 export class ProductsService {
   constructor(
     private prisma: PrismaService,
-    @Inject('CLOUDINARY') private cloudinaryClient: typeof cloudinary,
     private cloudinaryService: CloudinaryService,
   ) {}
 
@@ -116,10 +113,16 @@ export class ProductsService {
       isActive: true,
     };
 
+    // Solo aplicar si se envió
     if (isFeatured !== undefined) {
-      where.isFeatured = isFeatured;
+      where.isFeatured = isFeatured === 'true';
     }
 
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      where.price = {};
+      if (minPrice !== undefined) where.price.gte = Number(minPrice);
+      if (maxPrice !== undefined) where.price.lte = Number(maxPrice);
+    }
     // Filtro por categoría (incluye subcategorías)
     if (categoryId) {
       // Obtener todas las subcategorías
@@ -139,13 +142,6 @@ export class ProductsService {
     // Búsqueda por nombre
     if (search) {
       where.name = { contains: search, mode: 'insensitive' };
-    }
-
-    // Filtro por precio
-    if (minPrice !== undefined || maxPrice !== undefined) {
-      where.price = {};
-      if (minPrice !== undefined) where.price.gte = minPrice;
-      if (maxPrice !== undefined) where.price.lte = maxPrice;
     }
 
     return this.prisma.product.findMany({

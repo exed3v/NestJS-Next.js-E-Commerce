@@ -165,24 +165,38 @@ export class CategoriesService {
       throw new ForbiddenException('Only admins can delete categories');
     }
 
-    await this.findOne(id);
-
-    // Verificar si tiene productos asociados
+    // 1. Obtener la categoría con su imagen
     const category = await this.prisma.category.findUnique({
       where: { id },
       include: { products: { take: 1 } },
     });
 
-    if (category?.products) {
-      if (category?.products.length > 0) {
-        throw new ForbiddenException(
-          'Cannot delete category with associated products',
-        );
+    if (!category) {
+      throw new NotFoundException(`Category with ID ${id} not found`);
+    }
+
+    // 2. Verificar si tiene productos asociados
+    if (category.products && category.products.length > 0) {
+      throw new ForbiddenException(
+        'Cannot delete category with associated products',
+      );
+    }
+
+    // 3. Eliminar de la base de datos
+    await this.prisma.category.delete({
+      where: { id },
+    });
+
+    // 4. Eliminar imagen de Cloudinary (si existe)
+    if (category.image) {
+      try {
+        await this.cloudinaryService.deleteImage(category.image);
+      } catch (error) {
+        // Loguear pero no lanzar error (la categoría ya se eliminó)
+        console.error('Failed to delete image from Cloudinary:', error);
       }
     }
 
-    return this.prisma.category.delete({
-      where: { id },
-    });
+    return { message: 'Category deleted successfully' };
   }
 }
