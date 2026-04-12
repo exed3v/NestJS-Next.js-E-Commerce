@@ -78,21 +78,35 @@ export class ProductsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all products with filters' })
-  @ApiResponse({ status: 200, description: 'Products retrieved successfully' })
   findAll(
-    @Query('categoryId') categoryId?: string,
+    @Query('categoryId') categoryId?: string | string[], // ✅ Puede ser string o array
     @Query('search') search?: string,
     @Query('minPrice') minPrice?: string,
     @Query('maxPrice') maxPrice?: string,
     @Query('isFeatured') isFeatured?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
+    // Normalizar a array
+    const categoryIds = categoryId
+      ? Array.isArray(categoryId)
+        ? categoryId
+        : [categoryId]
+      : undefined;
+
     return this.productsService.findAll({
-      categoryId,
+      categoryIds, // ✅ Pasamos array
       search,
-      minPrice,
-      maxPrice,
-      isFeatured,
+      minPrice: minPrice ? Number(minPrice) : undefined,
+      maxPrice: maxPrice ? Number(maxPrice) : undefined,
+      isFeatured:
+        isFeatured === 'true'
+          ? true
+          : isFeatured === 'false'
+            ? false
+            : undefined,
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
     });
   }
 

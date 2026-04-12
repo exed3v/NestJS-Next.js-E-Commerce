@@ -8,6 +8,9 @@ export default async function Page() {
     categoriesApi.getAll(),
   ]);
   return (
-    <HomePage featuredProducts={featuredProducts} categories={categories} />
+    <HomePage
+      featuredProducts={featuredProducts.data}
+      categories={categories}
+    />
   );
 }

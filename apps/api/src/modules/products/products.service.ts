@@ -16,11 +16,13 @@ import {
 } from 'src/common/cloudinary/cloudinary.service';
 
 interface FindAllFilters {
-  categoryId?: string;
+  categoryIds?: string[]; // ✅ Cambiado a array
   search?: string;
-  minPrice?: string;
-  maxPrice?: string;
-  isFeatured?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  isFeatured?: boolean;
+  page?: number;
+  limit?: number;
 }
 
 interface ProductWhereInput {
@@ -107,15 +109,22 @@ export class ProductsService {
   }
 
   async findAll(filters: FindAllFilters = {}) {
-    const { categoryId, search, minPrice, maxPrice, isFeatured } = filters;
+    const {
+      categoryIds,
+      search,
+      minPrice,
+      maxPrice,
+      isFeatured,
+      page = 1,
+      limit = 10,
+    } = filters;
 
     const where: ProductWhereInput = {
       isActive: true,
     };
 
-    // Solo aplicar si se envió
     if (isFeatured !== undefined) {
-      where.isFeatured = isFeatured === 'true';
+      where.isFeatured = isFeatured;
     }
 
     if (minPrice !== undefined || maxPrice !== undefined) {
@@ -123,20 +132,24 @@ export class ProductsService {
       if (minPrice !== undefined) where.price.gte = Number(minPrice);
       if (maxPrice !== undefined) where.price.lte = Number(maxPrice);
     }
-    // Filtro por categoría (incluye subcategorías)
-    if (categoryId) {
-      // Obtener todas las subcategorías
-      const category = await this.prisma.category.findUnique({
-        where: { id: categoryId },
+
+    // ✅ Filtro por múltiples categorías (incluyendo subcategorías)
+    if (categoryIds && categoryIds.length > 0) {
+      // Obtener todas las categorías seleccionadas con sus hijos
+      const categories = await this.prisma.category.findMany({
+        where: { id: { in: categoryIds } },
         include: { children: true },
       });
 
-      const categoryIds = [categoryId];
-      if (category?.children) {
-        categoryIds.push(...category.children.map((c) => c.id));
-      }
+      const allCategoryIds: string[] = [];
+      categories.forEach((cat) => {
+        allCategoryIds.push(cat.id);
+        if (cat.children) {
+          allCategoryIds.push(...cat.children.map((c) => c.id));
+        }
+      });
 
-      where.categoryId = { in: categoryIds };
+      where.categoryId = { in: allCategoryIds };
     }
 
     // Búsqueda por nombre
@@ -144,19 +157,31 @@ export class ProductsService {
       where.name = { contains: search, mode: 'insensitive' };
     }
 
-    return this.prisma.product.findMany({
-      where,
-      include: {
-        category: true,
-        images: {
-          orderBy: { order: 'asc' },
+    const skip = (page - 1) * limit;
+    const take = limit;
+
+    const [products, total] = await Promise.all([
+      this.prisma.product.findMany({
+        where,
+        skip,
+        take,
+        include: {
+          category: true,
+          images: { orderBy: { order: 'asc' } },
+          variants: { orderBy: [{ type: 'asc' }, { value: 'asc' }] },
         },
-        variants: {
-          orderBy: [{ type: 'asc' }, { value: 'asc' }],
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.product.count({ where }),
+    ]);
+
+    return {
+      data: products,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(id: string) {
