@@ -1,45 +1,20 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNumber, IsOptional, Min } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsString, IsOptional, IsNumber, Min } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateVariantDto {
-  @ApiProperty({
-    description: 'Variant type (Color, Talla, etc.)',
-    example: 'Color',
-  })
-  @IsString()
-  type: string;
-
-  @ApiProperty({ description: 'Variant value', example: 'Negro' })
-  @IsString()
-  value: string;
-
-  @ApiPropertyOptional({
-    description: 'Specific price for this variant',
-    example: 125.0,
-  })
-  @IsNumber()
+  @ApiProperty({ required: false, example: 'M' })
   @IsOptional()
-  @Min(0)
-  @Type(() => Number)
-  price?: number;
+  @IsString()
+  size?: string;
 
-  @ApiPropertyOptional({
-    description: 'Stock for this variant',
-    example: 20,
-    default: 0,
-  })
-  @IsNumber()
+  @ApiProperty({ required: false, example: 'Rojo' })
   @IsOptional()
+  @IsString()
+  color?: string;
+
+  @ApiProperty({ required: false, example: 10 })
+  @IsOptional()
+  @IsNumber()
   @Min(0)
-  @Type(() => Number)
   stock?: number;
-
-  @ApiPropertyOptional({
-    description: 'SKU for this variant',
-    example: 'NK-AM90-BLK',
-  })
-  @IsString()
-  @IsOptional()
-  sku?: string;
 }

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -168,7 +169,7 @@ export class ProductsService {
         include: {
           category: true,
           images: { orderBy: { order: 'asc' } },
-          variants: { orderBy: [{ type: 'asc' }, { value: 'asc' }] },
+          variants: { orderBy: [{ size: 'asc' }, { color: 'asc' }] },
         },
         orderBy: { createdAt: 'desc' },
       }),
@@ -289,27 +290,28 @@ export class ProductsService {
       throw new ForbiddenException('Only admins can manage variants');
     }
 
-    // Verificar que el producto existe
     await this.findOne(productId);
+
+    // Validar que al menos size o color estén presentes
+    if (!createVariantDto.size && !createVariantDto.color) {
+      throw new BadRequestException('Debe proporcionar al menos size o color');
+    }
 
     return this.prisma.productVariant.create({
       data: {
         productId,
-        type: createVariantDto.type,
-        value: createVariantDto.value,
-        price: createVariantDto.price,
+        size: createVariantDto.size,
+        color: createVariantDto.color,
         stock: createVariantDto.stock ?? 0,
-        sku: createVariantDto.sku,
       },
     });
   }
 
   async getVariants(productId: string) {
     await this.findOne(productId);
-
     return this.prisma.productVariant.findMany({
       where: { productId },
-      orderBy: [{ type: 'asc' }, { value: 'asc' }],
+      orderBy: [{ size: 'asc' }, { color: 'asc' }],
     });
   }
 

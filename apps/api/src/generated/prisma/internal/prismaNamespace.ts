@@ -80,11 +80,11 @@ export type PrismaVersion = {
 }
 
 /**
- * Prisma Client JS version: 7.6.0
+ * Prisma Client JS version: 7.7.0
  * Query Engine version: 75cbdc1eb7150937890ad5465d861175c6624711
  */
 export const prismaVersion: PrismaVersion = {
-  client: "7.6.0",
+  client: "7.7.0",
   engine: "75cbdc1eb7150937890ad5465d861175c6624711"
 }
 
@@ -1316,11 +1316,9 @@ export type ProductImageScalarFieldEnum = (typeof ProductImageScalarFieldEnum)[k
 
 export const ProductVariantScalarFieldEnum = {
   id: 'id',
-  type: 'type',
-  value: 'value',
-  price: 'price',
+  size: 'size',
+  color: 'color',
   stock: 'stock',
-  sku: 'sku',
   productId: 'productId'
 } as const
 

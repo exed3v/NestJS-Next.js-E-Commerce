@@ -20,10 +20,8 @@ interface CartItemWithDetails {
   };
   variant: {
     id: string;
-    type: string;
-    value: string;
-    price: number | null;
-    sku: string | null;
+    size: string;
+    color: string;
   } | null;
 }
 
@@ -45,7 +43,14 @@ export class CartService {
                 },
               },
             },
-            variant: true,
+            variant: {
+              select: {
+                id: true,
+                size: true,
+                color: true,
+                stock: true,
+              },
+            },
           },
         },
       },
@@ -55,23 +60,18 @@ export class CartService {
       throw new NotFoundException('Cart not found');
     }
 
-    // Tipar items con la interfaz
-    const items = cart.items as unknown as CartItemWithDetails[];
-
-    // Calcular totales
-    const subtotal = items.reduce((sum, item) => {
-      const price = item.variant?.price ?? item.product.price;
-      return sum + price * item.quantity;
-    }, 0);
-
-    const formattedItems = items.map((item) => ({
+    // Tipar items
+    const items = cart.items.map((item) => ({
       id: item.id,
       quantity: item.quantity,
       product: item.product,
       variant: item.variant,
-      unitPrice: item.variant?.price ?? item.product.price,
-      totalPrice: (item.variant?.price ?? item.product.price) * item.quantity,
+      unitPrice: item.product.price, // ✅ Siempre el precio base del producto
+      totalPrice: item.product.price * item.quantity,
     }));
+
+    const subtotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
+    const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
 
     return {
       id: cart.id,
@@ -79,9 +79,9 @@ export class CartService {
       expiresAt: cart.expiresAt,
       createdAt: cart.createdAt,
       updatedAt: cart.updatedAt,
-      items: formattedItems,
+      items,
       subtotal,
-      totalItems: items.reduce((sum, item) => sum + item.quantity, 0),
+      totalItems,
     };
   }
 
@@ -107,8 +107,13 @@ export class CartService {
       }
 
       stockAvailable = variant.stock;
-      productName = `${variant.product.name} - ${variant.type}: ${variant.value}`;
-
+      const variantDesc: string[] = [];
+      if (variant.size) variantDesc.push(`Talle ${variant.size}`);
+      if (variant.color) variantDesc.push(`Color ${variant.color}`);
+      const variantSuffix = variantDesc.length
+        ? ` - ${variantDesc.join(', ')}`
+        : '';
+      productName = `${variant.product.name}${variantSuffix}`;
       if (stockAvailable < quantity) {
         throw new BadRequestException(`Insufficient stock for ${productName}`);
       }
