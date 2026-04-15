@@ -82,14 +82,14 @@ export class OrdersService {
 
         if (!variant || variant.stock < item.quantity) {
           throw new BadRequestException(
-            `Insufficient stock for ${variant?.product.name} - ${variant?.type}: ${variant?.value}`,
+            `Insufficient stock for ${variant?.product.name} - ${variant?.size}: ${variant?.color}`,
           );
         }
 
-        unitPrice = variant.price ?? variant.product.price;
+        unitPrice = variant.product.price;
         productName = variant.product.name;
-        productSku = variant.sku;
-        variantInfo = { type: variant.type, value: variant.value };
+        productSku = variant.product.sku;
+        variantInfo = { size: variant.size, color: variant.color };
       } else {
         // Verificar stock de producto
         const product = await this.prisma.product.findUnique({

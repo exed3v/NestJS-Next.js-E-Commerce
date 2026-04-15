@@ -129,11 +129,9 @@ export type ProductImageScalarFieldEnum = (typeof ProductImageScalarFieldEnum)[k
 
 export const ProductVariantScalarFieldEnum = {
   id: 'id',
-  type: 'type',
-  value: 'value',
-  price: 'price',
+  size: 'size',
+  color: 'color',
   stock: 'stock',
-  sku: 'sku',
   productId: 'productId'
 } as const
 

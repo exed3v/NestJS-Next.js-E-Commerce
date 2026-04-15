@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -8,8 +9,6 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { JwtUser } from 'src/common/interfaces/jwt-payload';
 
-import { Inject } from '@nestjs/common';
-import { v2 as cloudinary } from 'cloudinary';
 import { CreateVariantDto } from './dto/create-variant.dto';
 import { UpdateVariantDto } from './dto/update-variant.dto';
 import {
@@ -18,11 +17,13 @@ import {
 } from 'src/common/cloudinary/cloudinary.service';
 
 interface FindAllFilters {
-  categoryId?: string;
+  categoryIds?: string[]; // ✅ Cambiado a array
   search?: string;
   minPrice?: number;
   maxPrice?: number;
   isFeatured?: boolean;
+  page?: number;
+  limit?: number;
 }
 
 interface ProductWhereInput {
@@ -37,7 +38,6 @@ interface ProductWhereInput {
 export class ProductsService {
   constructor(
     private prisma: PrismaService,
-    @Inject('CLOUDINARY') private cloudinaryClient: typeof cloudinary,
     private cloudinaryService: CloudinaryService,
   ) {}
 
@@ -110,7 +110,15 @@ export class ProductsService {
   }
 
   async findAll(filters: FindAllFilters = {}) {
-    const { categoryId, search, minPrice, maxPrice, isFeatured } = filters;
+    const {
+      categoryIds,
+      search,
+      minPrice,
+      maxPrice,
+      isFeatured,
+      page = 1,
+      limit = 10,
+    } = filters;
 
     const where: ProductWhereInput = {
       isActive: true,
@@ -120,20 +128,29 @@ export class ProductsService {
       where.isFeatured = isFeatured;
     }
 
-    // Filtro por categoría (incluye subcategorías)
-    if (categoryId) {
-      // Obtener todas las subcategorías
-      const category = await this.prisma.category.findUnique({
-        where: { id: categoryId },
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      where.price = {};
+      if (minPrice !== undefined) where.price.gte = Number(minPrice);
+      if (maxPrice !== undefined) where.price.lte = Number(maxPrice);
+    }
+
+    // ✅ Filtro por múltiples categorías (incluyendo subcategorías)
+    if (categoryIds && categoryIds.length > 0) {
+      // Obtener todas las categorías seleccionadas con sus hijos
+      const categories = await this.prisma.category.findMany({
+        where: { id: { in: categoryIds } },
         include: { children: true },
       });
 
-      const categoryIds = [categoryId];
-      if (category?.children) {
-        categoryIds.push(...category.children.map((c) => c.id));
-      }
+      const allCategoryIds: string[] = [];
+      categories.forEach((cat) => {
+        allCategoryIds.push(cat.id);
+        if (cat.children) {
+          allCategoryIds.push(...cat.children.map((c) => c.id));
+        }
+      });
 
-      where.categoryId = { in: categoryIds };
+      where.categoryId = { in: allCategoryIds };
     }
 
     // Búsqueda por nombre
@@ -141,26 +158,31 @@ export class ProductsService {
       where.name = { contains: search, mode: 'insensitive' };
     }
 
-    // Filtro por precio
-    if (minPrice !== undefined || maxPrice !== undefined) {
-      where.price = {};
-      if (minPrice !== undefined) where.price.gte = minPrice;
-      if (maxPrice !== undefined) where.price.lte = maxPrice;
-    }
+    const skip = (page - 1) * limit;
+    const take = limit;
 
-    return this.prisma.product.findMany({
-      where,
-      include: {
-        category: true,
-        images: {
-          orderBy: { order: 'asc' },
+    const [products, total] = await Promise.all([
+      this.prisma.product.findMany({
+        where,
+        skip,
+        take,
+        include: {
+          category: true,
+          images: { orderBy: { order: 'asc' } },
+          variants: { orderBy: [{ size: 'asc' }, { color: 'asc' }] },
         },
-        variants: {
-          orderBy: [{ type: 'asc' }, { value: 'asc' }],
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.product.count({ where }),
+    ]);
+
+    return {
+      data: products,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(id: string) {
@@ -268,27 +290,28 @@ export class ProductsService {
       throw new ForbiddenException('Only admins can manage variants');
     }
 
-    // Verificar que el producto existe
     await this.findOne(productId);
+
+    // Validar que al menos size o color estén presentes
+    if (!createVariantDto.size && !createVariantDto.color) {
+      throw new BadRequestException('Debe proporcionar al menos size o color');
+    }
 
     return this.prisma.productVariant.create({
       data: {
         productId,
-        type: createVariantDto.type,
-        value: createVariantDto.value,
-        price: createVariantDto.price,
+        size: createVariantDto.size,
+        color: createVariantDto.color,
         stock: createVariantDto.stock ?? 0,
-        sku: createVariantDto.sku,
       },
     });
   }
 
   async getVariants(productId: string) {
     await this.findOne(productId);
-
     return this.prisma.productVariant.findMany({
       where: { productId },
-      orderBy: [{ type: 'asc' }, { value: 'asc' }],
+      orderBy: [{ size: 'asc' }, { color: 'asc' }],
     });
   }
 
